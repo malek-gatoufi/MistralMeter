@@ -20,11 +20,15 @@ from pathlib import Path
 from typing import Optional, Union
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Query
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Query, Security, Depends
+from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.openapi.utils import get_openapi
 from dotenv import load_dotenv
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.schemas import (
     EvalPrompt,
@@ -47,6 +51,45 @@ from app.metrics import aggregate_metrics, compare_metrics, compute_variance_met
 
 # Load environment variables
 load_dotenv()
+
+# ============ Security Configuration ============
+
+# Rate limiter
+limiter = Limiter(key_func=get_remote_address)
+
+# API Key security
+API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+# Load allowed API keys from environment
+ALLOWED_API_KEYS = set(
+    key.strip() 
+    for key in os.getenv("API_KEYS", "").split(",") 
+    if key.strip()
+)
+
+# Enable/disable authentication
+AUTH_ENABLED = os.getenv("ENABLE_AUTH", "false").lower() == "true"
+
+
+async def verify_api_key(api_key: str = Security(API_KEY_HEADER)):
+    """Verify API key if authentication is enabled."""
+    if not AUTH_ENABLED:
+        return True
+    
+    if not api_key:
+        raise HTTPException(
+            status_code=401,
+            detail="Missing API key. Include 'X-API-Key' header."
+        )
+    
+    if api_key not in ALLOWED_API_KEYS:
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid API key"
+        )
+    
+    return True
+
 
 # Global instances (initialized on startup)
 runner: Optional[MistralRunner] = None
@@ -78,6 +121,12 @@ app = FastAPI(
 ## Production-Grade LLM Evaluation Platform
 
 **MistralMeter** provides comprehensive metrics, statistical analysis, and human-in-the-loop calibration for Mistral AI models.
+
+### 🔒 Security Features
+- **Rate Limiting**: 10 requests/minute per IP for evaluation endpoints
+- **API Key Authentication**: Optional authentication (set ENABLE_AUTH=true)
+- **CORS Protection**: Configurable origins
+- **Cost Monitoring**: Track token usage and estimated costs
 
 ### 🎯 Core Features
 - **Single Prompt Evaluation**: Test individual prompts with detailed metrics
@@ -138,13 +187,19 @@ response = requests.post("http://localhost:8000/evaluate", json={
     ]
 )
 
-# CORS middleware
+# Add rate limiter
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# CORS middleware - restrictive by default
+ALLOWED_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "X-API-Key"],
 )
 
 
@@ -179,6 +234,11 @@ async def health_check():
         "components": {
             "runner": "ready" if runner else "not configured",
             "evaluator": "ready" if evaluator else "not configured"
+        },
+        "security": {
+            "auth_enabled": AUTH_ENABLED,
+            "rate_limiting": "active",
+            "cors_origins": ALLOWED_ORIGINS
         }
     }
 
@@ -186,7 +246,8 @@ async def health_check():
 # ============ Evaluation Endpoints ============
 
 @app.post("/evaluate", response_model=Union[EvalResult, EvalResultWithVariance], tags=["Evaluation"])
-async def evaluate_prompt(request: EvalRequest):
+@limiter.limit("10/minute")
+async def evaluate_prompt(request: EvalRequest, authenticated: bool = Depends(verify_api_key)):
     """
     Evaluate a single prompt with optional multi-run variance analysis.
     
@@ -308,7 +369,8 @@ async def evaluate_prompt(request: EvalRequest):
 
 
 @app.post("/evaluate/batch", response_model=BatchEvalResult, tags=["Evaluation"])
-async def evaluate_batch(request: BatchEvalRequest):
+@limiter.limit("5/minute")
+async def evaluate_batch(request: BatchEvalRequest, authenticated: bool = Depends(verify_api_key)):
     """
     Evaluate multiple prompts in batch.
     
@@ -369,7 +431,8 @@ async def evaluate_batch(request: BatchEvalRequest):
 
 
 @app.post("/compare", response_model=CompareResult, tags=["Comparison"])
-async def compare_models(request: CompareRequest):
+@limiter.limit("8/minute")
+async def compare_models(request: CompareRequest, authenticated: bool = Depends(verify_api_key)):
     """
     Compare two models on the same prompt.
     
@@ -563,7 +626,8 @@ async def get_rating_statistics():
 # ============ Streaming Endpoint ============
 
 @app.post("/stream", tags=["Streaming"])
-async def stream_response(request: EvalRequest):
+@limiter.limit("15/minute")
+async def stream_response(request: EvalRequest, authenticated: bool = Depends(verify_api_key)):
     """
     Stream response tokens in real-time.
     
@@ -646,11 +710,13 @@ async def get_dataset(name: str):
 
 
 @app.post("/datasets/{name}/evaluate", response_model=BatchEvalResult, tags=["Datasets"])
+@limiter.limit("3/minute")
 async def evaluate_dataset(
     name: str,
     model: MistralModel = MistralModel.MISTRAL_SMALL,
     temperature: float = 0.7,
-    max_tokens: int = 1024
+    max_tokens: int = 1024,
+    authenticated: bool = Depends(verify_api_key)
 ):
     """
     Evaluate an entire dataset.

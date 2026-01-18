@@ -1,0 +1,83 @@
+# ============================================
+# ⚡ MistralMeter - Container Orchestration
+# Compatible with Podman & Docker
+# ============================================
+# 
+# Usage with Podman:
+#   podman-compose up -d
+#   podman-compose logs -f
+#   podman-compose down
+#
+# Usage with Docker:
+#   docker compose up -d
+#
+# ============================================
+
+name: mistralmeter
+
+services:
+  # ============ Backend API ============
+  api:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    container_name: mistralmeter-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - .env
+    volumes:
+      - ./datasets:/app/datasets:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - mistralmeter-network
+    labels:
+      - "app=mistralmeter"
+      - "component=api"
+
+  # ============ Frontend Dashboard ============
+  dashboard:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+    container_name: mistralmeter-dashboard
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Use localhost because API calls are made from browser, not from container
+      - NUXT_PUBLIC_API_BASE=http://localhost:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - mistralmeter-network
+    labels:
+      - "app=mistralmeter"
+      - "component=dashboard"
+
+# ============ Network ============
+networks:
+  mistralmeter-network:
+    driver: bridge
+    name: mistralmeter-net
+
+# ============ Volumes (for future persistence) ============
+volumes:
+  mistralmeter-data:
+    name: mistralmeter-data

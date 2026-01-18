@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build
+.output/
+.nuxt/
+dist/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# macOS
+.DS_Store

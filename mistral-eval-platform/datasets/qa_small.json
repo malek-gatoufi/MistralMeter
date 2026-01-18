@@ -1,0 +1,62 @@
+{
+    "name": "qa_small",
+    "description": "Small Q&A dataset for testing LLM capabilities across different domains",
+    "prompts": [
+        {
+            "prompt": "Explain the concept of transformers in machine learning in simple terms",
+            "expected_style": "educational",
+            "category": "ml_concepts",
+            "reference_answer": "Transformers are a type of neural network architecture that processes sequences in parallel using attention mechanisms. Unlike RNNs, they can look at all parts of the input at once, making them faster and better at capturing long-range dependencies."
+        },
+        {
+            "prompt": "What is the difference between supervised and unsupervised learning?",
+            "expected_style": "educational",
+            "category": "ml_concepts",
+            "reference_answer": "Supervised learning uses labeled data to train models to predict outcomes, while unsupervised learning finds patterns in unlabeled data without predefined targets."
+        },
+        {
+            "prompt": "Write a Python function that checks if a string is a palindrome",
+            "expected_style": "technical",
+            "category": "coding",
+            "reference_answer": "def is_palindrome(s):\n    s = s.lower().replace(' ', '')\n    return s == s[::-1]"
+        },
+        {
+            "prompt": "Explain the CAP theorem in distributed systems",
+            "expected_style": "technical",
+            "category": "systems",
+            "reference_answer": "CAP theorem states that a distributed system can only guarantee two of three properties: Consistency, Availability, and Partition tolerance. You must choose which property to sacrifice based on your use case."
+        },
+        {
+            "prompt": "What are the key differences between REST and GraphQL APIs?",
+            "expected_style": "technical",
+            "category": "apis",
+            "reference_answer": "REST uses multiple endpoints with fixed data structures, while GraphQL uses a single endpoint where clients specify exactly what data they need. GraphQL reduces over-fetching but adds query complexity."
+        },
+        {
+            "prompt": "Summarize the main points of attention mechanism in neural networks in 3 sentences",
+            "expected_style": "concise",
+            "category": "ml_concepts"
+        },
+        {
+            "prompt": "Describe a creative solution for reducing carbon emissions in cities",
+            "expected_style": "creative",
+            "category": "general"
+        },
+        {
+            "prompt": "Draft a formal email requesting a meeting with a potential investor",
+            "expected_style": "formal",
+            "category": "communication"
+        },
+        {
+            "prompt": "Explain how DNS works to someone who has never heard of it",
+            "expected_style": "conversational",
+            "category": "networking"
+        },
+        {
+            "prompt": "What is gradient descent and why is it important for training neural networks?",
+            "expected_style": "educational",
+            "category": "ml_concepts",
+            "reference_answer": "Gradient descent is an optimization algorithm that iteratively adjusts model parameters by moving in the direction of steepest decrease of the loss function. It's fundamental because it enables neural networks to learn from data."
+        }
+    ]
+}

@@ -1,0 +1,46 @@
+{
+    "name": "coding_challenges",
+    "description": "Coding challenges to evaluate code generation capabilities",
+    "prompts": [
+        {
+            "prompt": "Write a Python function that finds the longest common subsequence of two strings",
+            "expected_style": "technical",
+            "category": "algorithms"
+        },
+        {
+            "prompt": "Implement a simple LRU cache in Python using a dictionary and doubly linked list",
+            "expected_style": "technical",
+            "category": "data_structures"
+        },
+        {
+            "prompt": "Write a JavaScript function that debounces another function with a specified delay",
+            "expected_style": "technical",
+            "category": "javascript"
+        },
+        {
+            "prompt": "Create a SQL query that finds employees who earn more than their managers",
+            "expected_style": "technical",
+            "category": "sql"
+        },
+        {
+            "prompt": "Write a Python decorator that logs the execution time of a function",
+            "expected_style": "technical",
+            "category": "python"
+        },
+        {
+            "prompt": "Implement binary search in Python, explain the time complexity",
+            "expected_style": "educational",
+            "category": "algorithms"
+        },
+        {
+            "prompt": "Write a regex pattern that validates email addresses and explain each part",
+            "expected_style": "technical",
+            "category": "regex"
+        },
+        {
+            "prompt": "Create a Python async function that fetches multiple URLs concurrently",
+            "expected_style": "technical",
+            "category": "async"
+        }
+    ]
+}
